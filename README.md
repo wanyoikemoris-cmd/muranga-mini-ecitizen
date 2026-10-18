@@ -1,16 +1,122 @@
-# React + Vite
+# Murang’a Public Service Request System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A mini eCitizen-style web application that enables citizens to submit public service requests and track their progress, while administrators review requests and update their status.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Citizen portal
+- Citizen registration and login.
+- Submit requests by service category, constituency, ward, location and description.
+- Optional image attachments for supporting evidence.
+- Automatic request reference numbers.
+- View submitted requests and track their status.
 
-## React Compiler
+### Administrator portal
+- View service requests.
+- Update request status: Pending, In Progress or Resolved.
+- View request details and uploaded images.
+- Dashboard statistics for monitoring requests.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Security
+- Supabase Authentication for user accounts.
+- Row Level Security (RLS) policies to restrict access to requests.
+- Private Supabase Storage bucket for request images.
+- Authenticated image access through signed URLs.
+- Environment variables for Supabase client configuration.
 
-## Expanding the ESLint configuration
+## Technology Stack
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- React
+- Vite
+- JavaScript
+- CSS
+- Supabase Authentication
+- Supabase PostgreSQL database
+- Supabase Storage
+
+## Getting Started
+
+### Prerequisites
+
+Install Node.js and npm. A Supabase project is also required.
+
+### Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/wanyoikemoris-cmd/muranga-mini-ecitizen.git
+cd muranga-mini-ecitizen
+npm install
+```
+
+### Environment Configuration
+
+Create a `.env.local` file in the project root and add your own Supabase project details:
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+```
+
+Replace the placeholder values with the corresponding values from your Supabase project. Never put a Supabase secret key in frontend code or commit credentials to GitHub.
+
+### Run Locally
+
+```bash
+npm run dev
+```
+
+Open the local URL printed in the terminal.
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+Vite generates the production files in the `dist` directory.
+
+## Database and Storage Setup
+
+Configure the Supabase project with the required database tables, columns, indexes, Row Level Security policies and private image-storage bucket.
+
+The main `service_requests` table stores request reference numbers, user IDs, service categories, constituencies, wards, locations, descriptions, image paths, statuses and timestamps.
+
+The `app_admins` table identifies authorized administrators. An administrator account must be explicitly authorized in the database.
+
+Create the `request-images` storage bucket with the intended file-size and image-type restrictions. Configure storage policies to limit uploads and image access to authorized users.
+
+Apply and verify the database and storage policies before deploying the application.
+
+## Request Statuses
+
+- **Pending:** The request has been submitted and is awaiting action.
+- **In Progress:** The request is being handled.
+- **Resolved:** The request has been marked as resolved.
+
+## Testing Checklist
+
+- [ ] Citizen can register and log in.
+- [ ] Constituency selection displays the correct wards.
+- [ ] A request can be submitted without an image.
+- [ ] A request can be submitted with an image.
+- [ ] Requests remain available after refreshing the application.
+- [ ] Citizens cannot view or modify another citizen's requests.
+- [ ] An administrator can update request statuses.
+- [ ] Dashboard statistics reflect the stored requests.
+- [ ] Production build completes successfully.
+
+## Future Improvements
+
+- Search and filtering by constituency, ward and status.
+- More detailed service-request analytics.
+- Email or SMS notifications.
+- Improved accessibility and mobile responsiveness.
+- Request-resolution feedback from citizens.
+
+## Project Purpose
+
+This project demonstrates practical skills in frontend development, authentication, database integration, file uploads, access control, user experience design and software documentation.
+
+**Developer:** Moris Wanyoike King’aiya
