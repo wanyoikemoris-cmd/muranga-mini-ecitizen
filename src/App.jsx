@@ -54,6 +54,7 @@ function App() {
   const [loadingRequests, setLoadingRequests] = useState(false);
 
   const [authMode, setAuthMode] = useState("login");
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
   const [authForm, setAuthForm] = useState({
     email: "",
     password: "",
@@ -91,8 +92,13 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (active) {
+        if (event === "PASSWORD_RECOVERY") {
+          setPasswordRecoveryMode(true);
+          setAuthMode("update-password");
+          setNotice("Choose a new password for your account.");
+        }
         setSession(newSession);
         setAuthReady(true);
       }
@@ -237,6 +243,17 @@ function App() {
     return matchesFilter && matchesSearch;
   });
 
+  function validateStrongPassword(password) {
+    if (password.length < 8) return "Use at least 8 characters.";
+    if (!/[A-Z]/.test(password)) return "Add at least one uppercase letter (A–Z).";
+    if (!/[a-z]/.test(password)) return "Add at least one lowercase letter (a–z).";
+    if (!/\d/.test(password)) return "Add at least one number (0–9).";
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      return "Add at least one special character, such as !, @ or #.";
+    }
+    return "";
+  }
+
   async function handleAuthSubmit(event) {
     event.preventDefault();
     setBusy(true);
@@ -246,12 +263,37 @@ function App() {
       const email = authForm.email.trim().toLowerCase();
       const password = authForm.password;
 
-      if (authMode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
+      if (authMode === "reset-request") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
         });
+        if (error) throw error;
+        setNotice(
+          "If an account exists for that email, a password-reset link has been sent. Check your inbox and spam folder."
+        );
+        return;
+      }
 
+      if (authMode === "update-password") {
+        const passwordError = validateStrongPassword(password);
+        if (passwordError) throw new Error(passwordError);
+
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+
+        setPasswordRecoveryMode(false);
+        setAuthMode("login");
+        setAuthForm((current) => ({ ...current, password: "" }));
+        await supabase.auth.signOut();
+        setNotice("Password updated successfully. Please sign in with your new password.");
+        return;
+      }
+
+      if (authMode === "signup") {
+        const passwordError = validateStrongPassword(password);
+        if (passwordError) throw new Error(passwordError);
+
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
 
         if (data.session) {
@@ -261,15 +303,11 @@ function App() {
             "Registration received. Check your email for a confirmation link before signing in."
           );
           setAuthMode("login");
+          setAuthForm((current) => ({ ...current, password: "" }));
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
         setNotice("Signed in successfully.");
       }
     } catch (error) {
@@ -504,7 +542,7 @@ function App() {
   }
 
   // Login and registration screen.
-  if (!session) {
+  if (!session || passwordRecoveryMode) {
     return (
       <div className="auth-screen">
         <div className="auth-card">
@@ -518,45 +556,78 @@ function App() {
 
           <p className="eyebrow">MURANG’A COUNTY GOVERNMENT</p>
           <h1>
-            {authMode === "login" ? "Welcome back" : "Create your account"}
+            {authMode === "login"
+              ? "Welcome"
+              : authMode === "signup"
+                ? "Create your account"
+                : authMode === "reset-request"
+                  ? "Reset your password"
+                  : "Choose a new password"}
           </h1>
           <p className="subtitle">
             {authMode === "login"
               ? "Sign in to submit and track your service requests."
-              : "Register to access the public service portal."}
+              : authMode === "signup"
+                ? "Register to access the public service portal."
+                : authMode === "reset-request"
+                  ? "Enter your email address and we’ll send instructions to reset your password."
+                  : "Create a strong new password for your account."}
           </p>
 
           <form onSubmit={handleAuthSubmit} className="request-form">
-            <label>
-              Email address
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={authForm.email}
-                onChange={(event) =>
-                  setAuthForm({ ...authForm, email: event.target.value })
-                }
-                placeholder="you@example.com"
-              />
-            </label>
+            {authMode !== "update-password" && (
+              <label>
+                Email address
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={authForm.email}
+                  onChange={(event) =>
+                    setAuthForm({ ...authForm, email: event.target.value })
+                  }
+                  placeholder="you@example.com"
+                />
+              </label>
+            )}
 
-            <label>
-              Password
-              <input
-                type="password"
-                required
-                minLength={6}
-                autoComplete={
-                  authMode === "login" ? "current-password" : "new-password"
-                }
-                value={authForm.password}
-                onChange={(event) =>
-                  setAuthForm({ ...authForm, password: event.target.value })
-                }
-                placeholder="At least 6 characters"
-              />
-            </label>
+            {authMode !== "reset-request" && (
+              <label>
+                Password
+                <input
+                  type="password"
+                  required
+                  minLength={authMode === "login" ? 1 : 8}
+                  pattern={
+                    authMode === "login"
+                      ? undefined
+                      : "(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
+                  }
+                  title={
+                    authMode === "login"
+                      ? "Enter your account password."
+                      : "Use at least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character."
+                  }
+                  autoComplete={
+                    authMode === "login" ? "current-password" : "new-password"
+                  }
+                  value={authForm.password}
+                  onChange={(event) =>
+                    setAuthForm({ ...authForm, password: event.target.value })
+                  }
+                  placeholder={
+                    authMode === "login"
+                      ? "Enter your password"
+                      : "8+ characters, upper/lowercase, number, symbol"
+                  }
+                />
+                {authMode !== "login" && (
+                  <span className="field-hint">
+                    Include uppercase and lowercase letters, a number and a special character.
+                  </span>
+                )}
+              </label>
+            )}
 
             <button
               className="primary-button submit-button"
@@ -567,9 +638,29 @@ function App() {
                 ? "Please wait…"
                 : authMode === "login"
                   ? "Sign in"
-                  : "Create account"}
+                  : authMode === "signup"
+                    ? "Create account"
+                    : authMode === "reset-request"
+                      ? "Send reset link"
+                      : "Update password"}
             </button>
           </form>
+
+          {authMode === "login" && (
+            <p className="auth-switch">
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setAuthMode("reset-request");
+                  setAuthForm((current) => ({ ...current, password: "" }));
+                  setNotice("");
+                }}
+              >
+                Forgot password?
+              </button>
+            </p>
+          )}
 
           {notice && (
             <p className="notice" role="status">
@@ -580,12 +671,16 @@ function App() {
           <p className="auth-switch">
             {authMode === "login"
               ? "Don't have an account?"
-              : "Already registered?"}{" "}
+              : authMode === "signup"
+                ? "Already registered?"
+                : "Remembered your password?"}{" "}
             <button
               type="button"
               className="text-button"
               onClick={() => {
+                setPasswordRecoveryMode(false);
                 setAuthMode(authMode === "login" ? "signup" : "login");
+                setAuthForm((current) => ({ ...current, password: "" }));
                 setNotice("");
               }}
             >
