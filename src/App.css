@@ -158,7 +158,9 @@ td select { padding: 7px; min-width: 110px; }
 @media (max-width: 650px) {
   .sidebar { position: static; width: 100%; padding: 16px; }
   .brand { padding-bottom: 17px; }
-  .sidebar .nav-label, .sidebar-bottom { display: none; }
+  .sidebar .nav-label {
+  display: none;
+}
   .sidebar nav { display: flex; }
   .nav-item { flex: 1; justify-content: center; padding: 10px 6px; font-size: 11px; }
   .main-content { margin-left: 0; padding: 0 13px 22px; }
